@@ -1,0 +1,70 @@
+#!/bin/bash
+
+(( $(id -u) == 0 )) || { echo >&2 "Must be root to run script"; exit 1; }
+
+aptget=$(which apt-get)
+aptop="install -y -qq"
+
+echo "Update apt cache"
+$aptget update >> /dev/null
+
+which lynx  >> /dev/null
+lynxavaliable=$(echo $?)
+
+echo "Checking if Lynx already installed"
+if [ $lynxavaliable == 0 ]; then
+	echo "Lynx detect"
+else
+	linuxdist=$(grep ID /etc/os-release | cut -d= -f2 | grep -v [0-9] | head -n 1)
+	if [ $linuxdist == debian ] || [ $linuxdist == ubuntu ] ; then
+		echo "Install Lynx"
+		$aptget $aptop  lynx >> /dev/null && $aptget clean >> /dev/null
+	else
+		echo "Your distribution its not supported, closing ...."
+		exit 1
+	fi
+fi
+
+which pip >> /dev/null
+pipavaliable=$(echo $?)
+
+echo "Checking if pip already installed"
+if [ $pipavaliable == 0 ] ; then
+	echo "Python pip detect"
+else
+	echo "Install python-dev and python3-dev"
+	$aptget $aptop python-keystoneclient python-dev python3-dev >> /dev/null && $aptget clean  >> /dev/null
+	mkdir -p /opt/tmpfiles
+	cd /opt/tmpfiles
+	echo "Downloading pip"
+	wget https://bootstrap.pypa.io/get-pip.py >> /dev/null 
+	echo "Install pip"
+	`which python` get-pip.py >> /dev/null 
+	rm -rf get-pip.py >> /dev/null
+fi
+
+	echo "Install Linux dependencies"
+	$aptget $aptop build-essential librsync-dev intltool >> /dev/null
+	
+duplicitybin=$(which duplicity)
+lcversion=$(duplicity --version |tr -d [:lower:] | tr -d [:punct:] | tr -d [=' '=])
+lastest=$(lynx -dump http://savannah.c3sl.ufpr.br/duplicity/ | grep -v .sig | tail -n 1 | cut -d' ' -f3)
+gzfile=$(echo $lastest | cut -d\/ -f5)
+gzversion=$(echo $gzfile | tr -d [:lower:] | tr -d [:punct:])
+if [ $lcversion == $gzversion ] ; then
+	echo "You running the lastest duplicity version"
+else
+	echo "Downloading latest duplicity"
+	wget $lastest >> /dev/null
+	echo "Extracting......."
+	#duplicitydir=$(tar xvf $gzfile | head -n 1 | cut -d\/ -f1)
+	tar xf $gzfile 
+	duplicitydir=$(tar tf $gzfile | head -n 1 | cut -d\/ -f1)
+	cd $duplicitydir
+	pip install -r requirements.txt
+	echo "Install duplicity"
+	`which python` setup.py install  >> /dev/null
+	rm -rf /opt/tmpfiles
+	#cd .. && rm -rf $duplicitydir\/
+	#rm -rf $gzfile
+fi
