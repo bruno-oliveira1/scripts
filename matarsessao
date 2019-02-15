@@ -1,0 +1,25 @@
+#!/bin/bash
+
+usuarios=( $(ls /home) )
+quantidade=$( (ls /home | wc -l) )
+
+clear
+echo "Lista de usuarios" 
+echo
+sleep 1 
+echo ${usuarios[*]}
+echo
+
+echo "Digite o usuário que queira derrubar "
+echo "Ou digite todos para derrubar todos os usuarios"
+read usuario
+
+ if [ $usuario == todos ]
+   then
+     for (( i = 0; i < $quantidade; i++ )); do
+       kill -9 `ps -u ${usuarios[$i]} | cut -d? -f 1 | cut -d"p" -f 1 | grep -v PID | grep -v 22`
+       echo Usuario ${usuarios[$i]} derrubado com sucesso
+     done
+   else 
+     kill -9 `ps -u $usuario | cut -d? -f 1 | cut -d"p" -f 1 | grep -v PID | grep -v 22`
+ fi
