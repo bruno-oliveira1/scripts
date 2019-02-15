@@ -31,6 +31,8 @@ pipavaliable=$(echo $?)
 echo "Checking if pip already installed"
 if [ $pipavaliable == 0 ] ; then
 	echo "Python pip detect"
+	echo "Python pip upgrade"
+	pip install --upgrade pip
 else
 	echo "Install python-dev and python3-dev"
 	$aptget $aptop python-keystoneclient python-dev python3-dev >> /dev/null && $aptget clean  >> /dev/null
