@@ -1,0 +1,50 @@
+#!/bin/bash
+
+## Define VARS ##
+# Use gpg --list-keys to get your keys
+GPG_KEY='gpgkey'
+
+# The path to where the files that we want to backup are
+SOURCE='/'
+
+# The path to where we want to store the backup
+TARGET='file:///location'
+TARGET2='scp://user@ip//folderpath'
+passphrase='gpgkeypassword'
+
+# The full path to the duplicity program
+DUPLICITY=`which duplicity`
+
+# create a new full backup every 1 month
+BK_FULL_FREQ="1M" 
+
+# delete any backup older than 7 weeks
+BK_FULL_LIFE="5W"
+
+# How many full+inc cycle to keep
+BK_KEEP_FULL="1"  
+
+    echo " "  >> /var/log/duplicitybackup.log
+
+# Local
+    echo "Local beginning at `date`"  >> /var/log/duplicitybackup.log
+PASSPHRASE=$passphrase $DUPLICITY --include-filelist=/root/include.txt --exclude-filelist=/root/exclude.txt --full-if-older-than $BK_FULL_FREQ ${SOURCE} --encrypt-key="${GPG_KEY}" --asynchronous-upload ${TARGET} -v8  >> /var/log/duplicitybackup.log
+
+    echo "Local ending at `date`"  >> /var/log/duplicitybackup.log
+    echo " "  >> /var/log/duplicitybackup.log
+    
+    ## Removing old backups##
+    echo "Removing old backups..."  >> /var/log/duplicitybackup.log
+PASSPHRASE=$passphrase $DUPLICITY remove-older-than $BK_FULL_LIFE --force ${TARGET} -v8  >> /var/log/duplicitybackup.log
+PASSPHRASE=$passphrase $DUPLICITY remove-all-inc-of-but-n-full $BK_KEEP_FULL --force ${TARGET} -v8  >> /var/log/duplicitybackup.log
+    echo "Backup remote and old files deletion beginning at `date`"  >> /var/log/duplicitybackup.log 
+
+PASSPHRASE=$passphrase $DUPLICITY list-current-files file:///location/ > /root/files
+
+# SCP
+rsync -avzhe ssh /location/ user@ip:/folderpath --progress --delete-before  >> /var/log/duplicitybackup.log
+rsync -avzhe ssh /root/files user@ip:/folderpath --progress --delete-before  >> /var/log/duplicitybackup.log
+
+    echo "Backup remote and deletion ending at `date`"  >> /var/log/duplicitybackup.log
+    echo " "  >> /var/log/duplicitybackup.log
+    echo `date`  >> /var/log/duplicitybackup.log
